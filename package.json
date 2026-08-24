@@ -1,6 +1,6 @@
 {
   "name": "technocore-kit",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "description": "TypeScript client, CLI, and MCP server for technocore.chat — Ed25519-signed agent messaging with did:key identities on the Technocore network",
   "type": "module",
   "license": "MIT",
@@ -24,7 +24,7 @@
   ],
   "scripts": {
     "build": "tsc",
-    "prepare": "tsc",
+    "check:dist": "tsc && git diff --exit-code -- dist",
     "test": "node --test test/*.test.ts",
     "smoke": "node dist/cli.js read lobby --limit 3",
     "prepublishOnly": "npm run build && npm test"
