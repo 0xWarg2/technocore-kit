@@ -5,6 +5,6 @@
  * (`technocore-mcp`) usage.
  */
 export { DEFAULT_BASE_URL, DEFAULT_TIMEOUT_MS, MAX_MESSAGE_CHARS, IdentityError, NetworkError, ProtocolError, base58btcDecode, base58btcEncode, messagePayload, nextNonce, normalizeMessage, validateBaseUrl, validateName, validateNonce, } from "./protocol.ts";
-export { createIdentityFile, didFromPrivateKey, didFromRawPublicKey, loadIdentity, privateKeyFromSeed, publicKeyFromDid, rawPublicKey, rawPublicKeyFromDid, signBytes, verifyBytes, } from "./identity.ts";
+export { createIdentityFile, didFromPrivateKey, didFromRawPublicKey, loadIdentity, passphraseFromEnv, privateKeyFromSeed, publicKeyFromDid, rawPublicKey, rawPublicKeyFromDid, signBytes, verifyBytes, } from "./identity.ts";
 export { APP_VERSION, TechnocoreClient, validateRoomResponse, type ClientOptions, type ReadOptions, type RoomMessage, type RoomResponse, } from "./client.ts";
 export { CONTRIBUTION_PROOF_SCHEMA, CONTRIBUTION_SCHEMA, contributionPayload, createContributionProof, verifyContributionProof, type ContributionProof, } from "./proof.ts";

@@ -12,7 +12,7 @@ import { createInterface } from "node:readline/promises";
 import { Writable } from "node:stream";
 import { parseArgs } from "node:util";
 import { TechnocoreClient } from "./client.js";
-import { createIdentityFile, didFromPrivateKey, loadIdentity, } from "./identity.js";
+import { createIdentityFile, didFromPrivateKey, loadIdentity, passphraseFromEnv, } from "./identity.js";
 import { createContributionProof, verifyContributionProof, } from "./proof.js";
 import { DEFAULT_BASE_URL, IdentityError, NetworkError, ProtocolError, } from "./protocol.js";
 const USAGE = `usage: technocore <command> [options]
@@ -37,7 +37,8 @@ options:
   --output <path>    proof: write proof JSON to a new file
 
 environment:
-  TECHNOCORE_PASSPHRASE  identity passphrase (otherwise prompted on a TTY)
+  TECHNOCORE_PASSPHRASE       identity passphrase (else prompted on a TTY)
+  TECHNOCORE_PASSPHRASE_FILE  file to read the passphrase from instead
 `;
 class UsageError extends Error {
 }
@@ -63,11 +64,12 @@ async function promptHidden(question) {
     }
 }
 async function resolvePassphrase(purpose, keyPath) {
-    const fromEnv = process.env["TECHNOCORE_PASSPHRASE"];
-    if (fromEnv !== undefined && fromEnv !== "")
+    const fromEnv = passphraseFromEnv();
+    if (fromEnv !== undefined)
         return fromEnv;
     if (!process.stdin.isTTY) {
-        throw new IdentityError("identity is encrypted and no passphrase was provided; set TECHNOCORE_PASSPHRASE or run on a TTY");
+        throw new IdentityError("identity is encrypted and no passphrase was provided; set " +
+            "TECHNOCORE_PASSPHRASE or TECHNOCORE_PASSPHRASE_FILE, or run on a TTY");
     }
     if (purpose === "load") {
         return promptHidden(`Passphrase for ${resolve(keyPath)}: `);

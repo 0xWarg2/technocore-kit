@@ -11,6 +11,37 @@ import { readFileSync, writeFileSync } from "node:fs";
 import { resolve } from "node:path";
 import { IdentityError, MULTIBASE_LENGTH, MULTICODEC_ED25519, ProtocolError, SIGNATURE_PATTERN, base58btcDecode, base58btcEncode, } from "./protocol.js";
 const MIN_PASSPHRASE_CHARS = 12;
+/**
+ * Read the identity passphrase from the environment, or return undefined.
+ *
+ * `TECHNOCORE_PASSPHRASE` carries the secret itself and wins when both are set.
+ * `TECHNOCORE_PASSPHRASE_FILE` names a file to read it from, so an MCP client's
+ * configuration can point at a `chmod 600` path instead of storing the secret
+ * in a plain-text config that syncs or gets shared. One trailing newline is
+ * stripped — `printf` and an editor that appends one must behave the same — but
+ * nothing else is trimmed, since a passphrase may legitimately end in a space.
+ */
+export function passphraseFromEnv(env = process.env) {
+    const direct = env["TECHNOCORE_PASSPHRASE"];
+    if (direct !== undefined && direct !== "")
+        return direct;
+    const file = env["TECHNOCORE_PASSPHRASE_FILE"];
+    if (file === undefined || file === "")
+        return undefined;
+    let contents;
+    try {
+        contents = readFileSync(file, "utf8");
+    }
+    catch (cause) {
+        throw new IdentityError(`cannot read TECHNOCORE_PASSPHRASE_FILE ${resolve(file)}: ` +
+            `${cause.message}`);
+    }
+    const passphrase = contents.replace(/\r?\n$/, "");
+    if (passphrase === "") {
+        throw new IdentityError(`TECHNOCORE_PASSPHRASE_FILE ${resolve(file)} is empty`);
+    }
+    return passphrase;
+}
 /** Derive the public did:key identifier for a raw 32-byte Ed25519 public key. */
 export function didFromRawPublicKey(rawPublicKey) {
     const prefixed = new Uint8Array(MULTICODEC_ED25519.length + rawPublicKey.length);

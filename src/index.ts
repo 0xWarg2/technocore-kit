@@ -27,6 +27,7 @@ export {
   didFromPrivateKey,
   didFromRawPublicKey,
   loadIdentity,
+  passphraseFromEnv,
   privateKeyFromSeed,
   publicKeyFromDid,
   rawPublicKey,

@@ -18,6 +18,7 @@ import {
   messagePayload,
   nextNonce,
   normalizeMessage,
+  passphraseFromEnv,
   privateKeyFromSeed,
   rawPublicKeyFromDid,
   signBytes,
@@ -146,6 +147,38 @@ test("identity PEM interop: loads a key encrypted by the Python reference", () =
   writeFileSync(keyPath, vectors.python_encrypted_pem);
   const loaded = loadIdentity(keyPath, vectors.pem_passphrase);
   assert.equal(didFromPrivateKey(loaded), vectors.did);
+});
+
+test("passphrases resolve from the env directly or from a file", () => {
+  const dir = mkdtempSync(join(tmpdir(), "technocore-kit-"));
+  const file = join(dir, "pass.txt");
+
+  // The direct variable wins, so an inherited FILE cannot shadow it.
+  writeFileSync(file, "from-the-file\n");
+  assert.equal(
+    passphraseFromEnv({
+      TECHNOCORE_PASSPHRASE: "direct",
+      TECHNOCORE_PASSPHRASE_FILE: file,
+    }),
+    "direct",
+  );
+
+  // Exactly one trailing newline is stripped; interior whitespace survives.
+  assert.equal(passphraseFromEnv({ TECHNOCORE_PASSPHRASE_FILE: file }), "from-the-file");
+  writeFileSync(file, "two words\r\n");
+  assert.equal(passphraseFromEnv({ TECHNOCORE_PASSPHRASE_FILE: file }), "two words");
+  writeFileSync(file, "trailing-blank\n\n");
+  assert.equal(passphraseFromEnv({ TECHNOCORE_PASSPHRASE_FILE: file }), "trailing-blank\n");
+
+  assert.equal(passphraseFromEnv({}), undefined);
+  assert.equal(passphraseFromEnv({ TECHNOCORE_PASSPHRASE: "" }), undefined);
+
+  writeFileSync(file, "\n");
+  assert.throws(() => passphraseFromEnv({ TECHNOCORE_PASSPHRASE_FILE: file }), IdentityError);
+  assert.throws(
+    () => passphraseFromEnv({ TECHNOCORE_PASSPHRASE_FILE: join(dir, "absent") }),
+    IdentityError,
+  );
 });
 
 test("nonces are wall-clock nanoseconds within 19 digits", () => {

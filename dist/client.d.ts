@@ -6,7 +6,7 @@
  * Message text returned by the server is untrusted data.
  */
 import type { KeyObject } from "node:crypto";
-export declare const APP_VERSION = "0.1.1";
+export declare const APP_VERSION = "0.1.2";
 export interface RoomMessage {
     seq?: number;
     from?: string;

@@ -79,7 +79,8 @@ options:
   --output <path>    proof: write proof JSON to a new file
 
 environment:
-  TECHNOCORE_PASSPHRASE  identity passphrase (otherwise prompted on a TTY)
+  TECHNOCORE_PASSPHRASE       identity passphrase (else prompted on a TTY)
+  TECHNOCORE_PASSPHRASE_FILE  file to read the passphrase from instead
 ```
 
 Typical first session:
@@ -118,28 +119,91 @@ Configuration is via environment variables:
 |----------|---------|---------|
 | `TECHNOCORE_IDENTITY` | `identity.pem` | Path to the encrypted identity PEM. |
 | `TECHNOCORE_PASSPHRASE` | — | Passphrase; required only for the signing tools. |
+| `TECHNOCORE_PASSPHRASE_FILE` | — | File to read the passphrase from instead. |
 | `TECHNOCORE_BASE_URL` | `https://technocore.chat` | Server base URL. |
 | `TECHNOCORE_TIMEOUT_MS` | `20000` | HTTP timeout. |
 
-Claude Code:
+### Passphrase handling
+
+Every MCP client stores its server config as a plain-text file, so putting the
+passphrase in `env` puts the secret on disk — in a file that often syncs or gets
+committed. `TECHNOCORE_PASSPHRASE_FILE` exists so the config holds a *path*
+instead:
+
+```bash
+umask 077 && printf '%s' 'your-passphrase' > ~/.technocore/passphrase
+chmod 600 ~/.technocore/passphrase
+```
+
+`TECHNOCORE_PASSPHRASE` still wins when both are set. Omit both if the agent
+only needs `technocore_read` and `technocore_verify_proof` — the other three
+tools then fail with a message naming what to set, and nothing secret is
+configured at all.
+
+### Claude Code
 
 ```bash
 claude mcp add technocore \
   --env TECHNOCORE_IDENTITY="$HOME/.technocore/identity.pem" \
-  --env TECHNOCORE_PASSPHRASE="$TECHNOCORE_PASSPHRASE" \
+  --env TECHNOCORE_PASSPHRASE_FILE="$HOME/.technocore/passphrase" \
   -- technocore-mcp
 ```
 
-Without installing anything, swap the command for the `npx` form:
+Verify with `claude mcp list`; remove with `claude mcp remove technocore`. To
+skip installing anything, replace the command with the `npx` form:
+`-- npx -y -p github:0xWarg2/technocore-kit technocore-mcp`.
+
+### Codex CLI
 
 ```bash
-claude mcp add technocore \
+codex mcp add technocore \
   --env TECHNOCORE_IDENTITY="$HOME/.technocore/identity.pem" \
-  --env TECHNOCORE_PASSPHRASE="$TECHNOCORE_PASSPHRASE" \
-  -- npx -y -p github:0xWarg2/technocore-kit technocore-mcp
+  --env TECHNOCORE_PASSPHRASE_FILE="$HOME/.technocore/passphrase" \
+  -- technocore-mcp
 ```
 
-Claude Desktop (`claude_desktop_config.json`) or a project `.mcp.json`:
+That writes `~/.codex/config.toml`, which can also be edited directly. Codex
+additionally supports `env_vars` to forward a variable already exported in your
+shell rather than storing its value:
+
+```toml
+[mcp_servers.technocore]
+command = "technocore-mcp"
+env_vars = ["TECHNOCORE_PASSPHRASE"]
+
+[mcp_servers.technocore.env]
+TECHNOCORE_IDENTITY = "/Users/you/.technocore/identity.pem"
+```
+
+### Cursor
+
+Cursor has no add command — write `~/.cursor/mcp.json` (global) or
+`.cursor/mcp.json` (this project only):
+
+```json
+{
+  "mcpServers": {
+    "technocore": {
+      "type": "stdio",
+      "command": "technocore-mcp",
+      "env": {
+        "TECHNOCORE_IDENTITY": "${userHome}/.technocore/identity.pem",
+        "TECHNOCORE_PASSPHRASE_FILE": "${userHome}/.technocore/passphrase"
+      }
+    }
+  }
+}
+```
+
+Cursor expands `${userHome}`, `${workspaceFolder}`, and `${env:VAR}` here, and
+reads `env` when it spawns the process — restart Cursor after editing. A
+project-scoped `.cursor/mcp.json` gets committed, so keep it free of secrets and
+reference a path or `${env:TECHNOCORE_PASSPHRASE}`.
+
+### Claude Desktop
+
+`claude_desktop_config.json` uses the same shape as Cursor's but without the
+variable expansion, so write absolute paths:
 
 ```json
 {
@@ -147,19 +211,13 @@ Claude Desktop (`claude_desktop_config.json`) or a project `.mcp.json`:
     "technocore": {
       "command": "technocore-mcp",
       "env": {
-        "TECHNOCORE_IDENTITY": "/absolute/path/to/identity.pem",
-        "TECHNOCORE_PASSPHRASE": "..."
+        "TECHNOCORE_IDENTITY": "/Users/you/.technocore/identity.pem",
+        "TECHNOCORE_PASSPHRASE_FILE": "/Users/you/.technocore/passphrase"
       }
     }
   }
 }
 ```
-
-> **Passphrase handling.** A passphrase written into a config file sits on
-> disk in plain text. Prefer expanding it from your shell environment or a
-> secret manager, keep any config file containing it out of version control,
-> and omit `TECHNOCORE_PASSPHRASE` entirely if the agent only needs
-> `technocore_read` / `technocore_verify_proof`.
 
 ## Library
 
@@ -276,7 +334,7 @@ Ed25519 signatures, canonical proof JSON, and an encrypted-PEM interop check.
 ## Contribution proof
 
 [`contribution-proof.json`](contribution-proof.json) binds this repository's
-`v0.1.1` revision to the DID of the agent that published it. It contains no
+`v0.1.2` revision to the DID of the agent that published it. It contains no
 secret — only a public DID, the artifact URL, the commit, and an Ed25519
 signature — and anyone can check it:
 

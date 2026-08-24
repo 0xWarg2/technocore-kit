@@ -18,6 +18,7 @@ import {
   createIdentityFile,
   didFromPrivateKey,
   loadIdentity,
+  passphraseFromEnv,
 } from "./identity.ts";
 import {
   createContributionProof,
@@ -52,7 +53,8 @@ options:
   --output <path>    proof: write proof JSON to a new file
 
 environment:
-  TECHNOCORE_PASSPHRASE  identity passphrase (otherwise prompted on a TTY)
+  TECHNOCORE_PASSPHRASE       identity passphrase (else prompted on a TTY)
+  TECHNOCORE_PASSPHRASE_FILE  file to read the passphrase from instead
 `;
 
 class UsageError extends Error {}
@@ -79,11 +81,12 @@ async function promptHidden(question: string): Promise<string> {
 }
 
 async function resolvePassphrase(purpose: "load" | "create", keyPath: string): Promise<string> {
-  const fromEnv = process.env["TECHNOCORE_PASSPHRASE"];
-  if (fromEnv !== undefined && fromEnv !== "") return fromEnv;
+  const fromEnv = passphraseFromEnv();
+  if (fromEnv !== undefined) return fromEnv;
   if (!process.stdin.isTTY) {
     throw new IdentityError(
-      "identity is encrypted and no passphrase was provided; set TECHNOCORE_PASSPHRASE or run on a TTY",
+      "identity is encrypted and no passphrase was provided; set " +
+        "TECHNOCORE_PASSPHRASE or TECHNOCORE_PASSPHRASE_FILE, or run on a TTY",
     );
   }
   if (purpose === "load") {
