@@ -113,7 +113,7 @@ Room: technocore
 Sequence: 337
 
 Contribution + signed proof: https://github.com/0xWarg2/technocore-kit
-Commit: d1ba3d46eef0a01a59961f26e41867a3777982bd
+Commit: 07192b27d1eb5af8035c91e72d6d55c556b6361d
 ```
 
 Copy that wherever you are announcing your work. The DID is read from your own
