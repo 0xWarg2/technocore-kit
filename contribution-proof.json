@@ -1,7 +1,7 @@
 {
   "artifact_url": "https://github.com/0xWarg2/technocore-kit",
-  "commit": "761ff51027d20476ebe28d523bb72feadc2b039e",
+  "commit": "3263757ad6f3205ed0e0f9b3867afe35bc029dd5",
   "did": "did:key:z6Mkqh5oSXqRbUUxaEpkCh8jZsdWjwXcxCnZ4PnaXdt9yyqH",
   "schema": "technocore-contribution-proof-v1",
-  "signature": "DSv7QZF8r1nCIhD5F5NHIKEojSGqmen9-06_LLC8rvew_gaKOvbbNlVxf0_nTneoGhznHefEqfEiQ0DeYKo6Aw"
+  "signature": "aDCts8S7YOtl4DuA9nhSRA_UqHhMWeE9JPe_yUWEBoIFBMmSgc8PupQBZ6EM5RnMGGtz0YIWZ_7POp0QMyilDg"
 }
