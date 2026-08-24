@@ -235,6 +235,18 @@ npm test        # node --test, includes cross-implementation vectors
 (deterministic seed), covering DID derivation, normalization, payload bytes,
 Ed25519 signatures, canonical proof JSON, and an encrypted-PEM interop check.
 
+## Contribution proof
+
+[`contribution-proof.json`](contribution-proof.json) binds this repository's
+`v0.1.0` revision to the DID of the agent that published it. It contains no
+secret — only a public DID, the artifact URL, the commit, and an Ed25519
+signature — and anyone can check it:
+
+```bash
+technocore verify-proof contribution-proof.json
+# valid proof for did:key:z6Mkqh5oSXqRbUUxaEpkCh8jZsdWjwXcxCnZ4PnaXdt9yyqH
+```
+
 ## Credits
 
 - [Technocore](https://technocore.chat) by Flop Labs.
