@@ -32,22 +32,27 @@ it. An `identity.pem` created by either implementation works with the other.
 ## Install
 
 ```bash
-# Global CLI + MCP server
-npm install -g github:0xWarg2/technocore-kit
-
 # Zero-install: run either binary straight from the repo
 npx -y -p github:0xWarg2/technocore-kit technocore --help
 npx -y -p github:0xWarg2/technocore-kit technocore-mcp
 
-# Or work from a clone
+# Global CLI + MCP server, from a clone
 git clone https://github.com/0xWarg2/technocore-kit
 cd technocore-kit
-npm install && npm run build && npm test
+npm install && npm test && npm install -g .
 ```
 
-Both binaries — `technocore` and `technocore-mcp` — are on `PATH` after the
-global install. `dist/` ships in git so no build step runs at install time; see
-[Development](#development) for why, and how to verify it matches `src/`.
+After the global install both binaries — `technocore` and `technocore-mcp` — are
+on `PATH`. `dist/` ships in git, so neither path needs a TypeScript toolchain;
+see [Development](#development) for why, and how to verify it matches `src/`.
+
+> `npm install -g <git-url>` is deliberately not listed: on npm 11.5.1 it leaves
+> the global package as a symlink into npm's cache tmp directory, which is
+> deleted when the install ends. The same npm version also runs a git
+> dependency's build hook without installing its `devDependencies` — reproducible
+> with unrelated packages, e.g. `npm install -g github:isaacs/rimraf` exits
+> `sh: tshy: command not found`. Use `npx -p` or a clone until that is fixed
+> upstream.
 
 ## CLI
 
@@ -123,6 +128,15 @@ claude mcp add technocore \
   --env TECHNOCORE_IDENTITY="$HOME/.technocore/identity.pem" \
   --env TECHNOCORE_PASSPHRASE="$TECHNOCORE_PASSPHRASE" \
   -- technocore-mcp
+```
+
+Without installing anything, swap the command for the `npx` form:
+
+```bash
+claude mcp add technocore \
+  --env TECHNOCORE_IDENTITY="$HOME/.technocore/identity.pem" \
+  --env TECHNOCORE_PASSPHRASE="$TECHNOCORE_PASSPHRASE" \
+  -- npx -y -p github:0xWarg2/technocore-kit technocore-mcp
 ```
 
 Claude Desktop (`claude_desktop_config.json`) or a project `.mcp.json`:
@@ -234,12 +248,20 @@ npm test           # node --test, includes cross-implementation vectors
 npm run check:dist # rebuild and fail if committed dist/ is stale
 ```
 
-`dist/` is committed on purpose. `npm install -g <git-url>` runs a package's
-build hook in a temporary clone whose inner install resolves **globally**, so
-`devDependencies` — and therefore `tsc` — are never present and the build exits
-`127`. Shipping `dist/` makes the global install and `npx` work with no
-toolchain on the user's machine. Commit `src/` and `dist/` together;
-`npm run check:dist` is the guard that they agree.
+`dist/` is committed on purpose. npm prepares a package installed from a git URL
+by cloning it and running its build hook there, but that inner install does not
+reliably provide `devDependencies` — so `tsc` may be absent and the build exits
+`127`. Shipping `dist/` lets `npx -p` and a clone install work with no toolchain
+on the user's machine, and [`scripts/prepare.mjs`](scripts/prepare.mjs) builds
+only when `node_modules/typescript` is actually there.
+
+The two bin entrypoints are tracked mode `100755`; `tsc` truncates them in place
+on rebuild, so the bit survives. If you ever `rm -rf dist` and rebuild, restore
+it with `git update-index --chmod=+x dist/cli.js dist/mcp.js` — a bin symlink
+pointing at a `644` file fails with `permission denied`.
+
+Commit `src/` and `dist/` together; `npm run check:dist` is the guard that they
+agree.
 
 ### Branches
 
