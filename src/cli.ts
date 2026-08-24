@@ -5,6 +5,9 @@
  * Command-compatible with the reference Python starter:
  *   init | did | say <room> <text> | read <room> | proof <url> <commit> |
  *   verify-proof <file>
+ *
+ * `setup`, `announce` and `compose` are additions: a one-step first run, and
+ * two text formatters that keep a hand-copied DID out of an announcement.
  */
 
 import { readFileSync, writeFileSync } from "node:fs";
@@ -13,6 +16,11 @@ import { createInterface } from "node:readline/promises";
 import { Writable } from "node:stream";
 import { parseArgs } from "node:util";
 
+import {
+  announcedProof,
+  postAnnouncement,
+  roomAnnouncement,
+} from "./announce.ts";
 import { TechnocoreClient } from "./client.ts";
 import {
   findPassphrase,
@@ -46,6 +54,8 @@ commands:
   read <room>                   read untrusted room data as JSON
   proof <artifact_url> <commit> sign a public contribution revision
   verify-proof <proof_file>     verify public proof JSON
+  announce <room> <seq>         format the block announcing a published message
+  compose <summary>             format one line to hand to say
 
 options:
   --key <path>       identity PEM path (default: ~/.technocore/identity.pem)
@@ -57,6 +67,8 @@ options:
   --wait <secs>      read: long-poll seconds (0-10); requires --since
   --follow           read: keep reading until interrupted
   --output <path>    proof: write proof JSON to a new file
+  --artifact-url <u> announce, compose: HTTPS URL of the contribution
+  --proof-file <p>   announce: proof JSON to quote; must be signed by this DID
 
 environment:
   TECHNOCORE_HOME             identity directory (default: ~/.technocore)
@@ -66,6 +78,20 @@ environment:
 `;
 
 class UsageError extends Error {}
+
+/** Read a proof document from disk as a plain object, or explain why not. */
+function readProofObject(path: string): Record<string, unknown> {
+  let parsed: unknown;
+  try {
+    parsed = JSON.parse(readFileSync(resolve(path), "utf-8"));
+  } catch (error) {
+    throw new ProtocolError(`cannot read proof JSON: ${String(error)}`);
+  }
+  if (typeof parsed !== "object" || parsed === null || Array.isArray(parsed)) {
+    throw new ProtocolError("proof JSON must contain an object");
+  }
+  return parsed as Record<string, unknown>;
+}
 
 async function promptHidden(question: string): Promise<string> {
   const muted = new Writable({
@@ -173,6 +199,8 @@ async function run(argv: string[]): Promise<number> {
       wait: { type: "string" },
       follow: { type: "boolean", default: false },
       output: { type: "string" },
+      "artifact-url": { type: "string" },
+      "proof-file": { type: "string" },
       help: { type: "boolean", default: false },
       version: { type: "boolean", default: false },
     },
@@ -294,18 +322,43 @@ async function run(argv: string[]): Promise<number> {
       if (proofFile === undefined) {
         throw new UsageError("verify-proof requires <proof_file>");
       }
-      let parsed: unknown;
-      try {
-        parsed = JSON.parse(readFileSync(resolve(proofFile), "utf-8"));
-      } catch (error) {
-        throw new ProtocolError(`cannot read proof JSON: ${String(error)}`);
+      const parsed = readProofObject(proofFile);
+      verifyContributionProof(parsed);
+      process.stdout.write(`valid proof for ${parsed["did"]}\n`);
+      return 0;
+    }
+    case "announce": {
+      const [room, seqText] = rest;
+      if (room === undefined || seqText === undefined) {
+        throw new UsageError("announce requires <room> and <seq>");
       }
-      if (typeof parsed !== "object" || parsed === null || Array.isArray(parsed)) {
-        throw new ProtocolError("proof JSON must contain an object");
-      }
-      verifyContributionProof(parsed as Record<string, unknown>);
+      const seq = parseIntOption(seqText, "<seq>");
+      if (seq === undefined) throw new UsageError("<seq> must be an integer");
+      const passphrase = await resolvePassphrase("load", keyPath);
+      const did = didFromPrivateKey(loadIdentity(keyPath, passphrase));
+      const proofFile = values["proof-file"];
+      const proof =
+        proofFile === undefined
+          ? undefined
+          : announcedProof(readProofObject(proofFile), did);
       process.stdout.write(
-        `valid proof for ${(parsed as Record<string, unknown>)["did"]}\n`,
+        postAnnouncement({
+          did,
+          room,
+          seq,
+          artifactUrl: values["artifact-url"],
+          proof,
+        }),
+      );
+      return 0;
+    }
+    case "compose": {
+      const [summary] = rest;
+      if (summary === undefined) {
+        throw new UsageError("compose requires <summary>");
+      }
+      process.stdout.write(
+        `${roomAnnouncement({ artifactUrl: values["artifact-url"], summary })}\n`,
       );
       return 0;
     }

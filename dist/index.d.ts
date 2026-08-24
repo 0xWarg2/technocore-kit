@@ -9,3 +9,4 @@ export { defaultIdentityPath, defaultPassphrasePath, findPassphrase, resolveIden
 export { createIdentityFile, didFromPrivateKey, didFromRawPublicKey, loadIdentity, privateKeyFromSeed, publicKeyFromDid, rawPublicKey, rawPublicKeyFromDid, signBytes, verifyBytes, } from "./identity.ts";
 export { APP_VERSION, TechnocoreClient, validateRoomResponse, type ClientOptions, type ReadOptions, type RoomMessage, type RoomResponse, } from "./client.ts";
 export { CONTRIBUTION_PROOF_SCHEMA, CONTRIBUTION_SCHEMA, contributionPayload, createContributionProof, verifyContributionProof, type ContributionProof, } from "./proof.ts";
+export { announcedProof, postAnnouncement, roomAnnouncement, type AnnouncedProof, type PostAnnouncement, type RoomAnnouncement, } from "./announce.ts";

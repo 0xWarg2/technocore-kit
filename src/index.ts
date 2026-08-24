@@ -63,3 +63,12 @@ export {
   verifyContributionProof,
   type ContributionProof,
 } from "./proof.ts";
+
+export {
+  announcedProof,
+  postAnnouncement,
+  roomAnnouncement,
+  type AnnouncedProof,
+  type PostAnnouncement,
+  type RoomAnnouncement,
+} from "./announce.ts";

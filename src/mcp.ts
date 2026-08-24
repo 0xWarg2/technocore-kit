@@ -26,6 +26,12 @@ import { McpServer } from "@modelcontextprotocol/server";
 import { serveStdio } from "@modelcontextprotocol/server/stdio";
 import * as z from "zod/v4";
 
+import type { AnnouncedProof } from "./announce.ts";
+import {
+  announcedProof,
+  postAnnouncement,
+  roomAnnouncement,
+} from "./announce.ts";
 import { APP_VERSION, TechnocoreClient } from "./client.ts";
 import {
   defaultIdentityPath,
@@ -264,6 +270,91 @@ serveStdio(() => {
         verifyContributionProof(parsed as Record<string, unknown>);
         return ok(
           `valid proof for ${(parsed as Record<string, unknown>)["did"]}`,
+        );
+      } catch (error) {
+        return fail(error);
+      }
+    },
+  );
+
+  server.registerTool(
+    "technocore_announce",
+    {
+      description:
+        "Format the announcement text for a contribution that has ALREADY " +
+        "been published. Does nothing on the network and reveals no secret: " +
+        "it fills in this agent's own DID so a hand-copied one cannot be " +
+        "wrong. target=\"room\" returns one line to hand to technocore_say; " +
+        "target=\"post\" returns the DID/Room/Sequence block to paste " +
+        "elsewhere, and needs the room and the sequence number that " +
+        "technocore_say actually returned — never a guessed one.",
+      inputSchema: z.object({
+        target: z
+          .enum(["post", "room"])
+          .default("post")
+          .describe("\"room\" for a line to say; \"post\" for the block"),
+        room: z
+          .string()
+          .optional()
+          .describe("target=post: the room the message was published in"),
+        seq: z
+          .number()
+          .int()
+          .nonnegative()
+          .optional()
+          .describe("target=post: the sequence technocore_say returned"),
+        summary: z
+          .string()
+          .optional()
+          .describe("target=room: one sentence on what was published"),
+        artifact_url: z
+          .string()
+          .optional()
+          .describe("absolute HTTPS URL of the contribution"),
+        proof: z
+          .string()
+          .optional()
+          .describe(
+            "target=post: proof JSON to quote; verified, and rejected " +
+              "unless it is signed by this agent's own DID",
+          ),
+      }),
+    },
+    async ({ target, room, seq, summary, artifact_url, proof }) => {
+      try {
+        if (target === "room") {
+          if (summary === undefined) {
+            return fail(new Error("target=\"room\" requires a summary"));
+          }
+          return ok(roomAnnouncement({ artifactUrl: artifact_url, summary }));
+        }
+        if (room === undefined || seq === undefined) {
+          return fail(
+            new Error(
+              "target=\"post\" requires the room and the seq that " +
+                "technocore_say returned",
+            ),
+          );
+        }
+        let announced: AnnouncedProof | undefined;
+        if (proof !== undefined) {
+          const parsed: unknown = JSON.parse(proof);
+          if (typeof parsed !== "object" || parsed === null || Array.isArray(parsed)) {
+            return fail(new Error("proof JSON must contain an object"));
+          }
+          announced = announcedProof(
+            parsed as Record<string, unknown>,
+            didFromPrivateKey(identity()),
+          );
+        }
+        return ok(
+          postAnnouncement({
+            did: didFromPrivateKey(identity()),
+            room,
+            seq,
+            artifactUrl: artifact_url,
+            proof: announced,
+          }),
         );
       } catch (error) {
         return fail(error);

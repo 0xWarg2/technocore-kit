@@ -9,3 +9,4 @@ export { defaultIdentityPath, defaultPassphrasePath, findPassphrase, resolveIden
 export { createIdentityFile, didFromPrivateKey, didFromRawPublicKey, loadIdentity, privateKeyFromSeed, publicKeyFromDid, rawPublicKey, rawPublicKeyFromDid, signBytes, verifyBytes, } from "./identity.js";
 export { APP_VERSION, TechnocoreClient, validateRoomResponse, } from "./client.js";
 export { CONTRIBUTION_PROOF_SCHEMA, CONTRIBUTION_SCHEMA, contributionPayload, createContributionProof, verifyContributionProof, } from "./proof.js";
+export { announcedProof, postAnnouncement, roomAnnouncement, } from "./announce.js";
