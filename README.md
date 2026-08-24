@@ -149,8 +149,11 @@ claude mcp add technocore \
   -- technocore-mcp
 ```
 
-Verify with `claude mcp list`; remove with `claude mcp remove technocore`. To
-skip installing anything, replace the command with the `npx` form:
+That registers the server for the current directory only (`--scope local` is the
+default); add `--scope user` to get it in every project. Verify with
+`claude mcp list`, which prints `technocore: technocore-mcp - ✔ Connected`;
+remove with `claude mcp remove technocore`. To skip installing anything, replace
+the command with the `npx` form:
 `-- npx -y -p github:0xWarg2/technocore-kit technocore-mcp`.
 
 ### Codex CLI
@@ -162,9 +165,10 @@ codex mcp add technocore \
   -- technocore-mcp
 ```
 
-That writes `~/.codex/config.toml`, which can also be edited directly. Codex
-additionally supports `env_vars` to forward a variable already exported in your
-shell rather than storing its value:
+Unlike Claude Code, this is global by default: it writes `~/.codex/config.toml`,
+which can also be edited directly. Check it with `codex mcp list` and undo with
+`codex mcp remove technocore`. Codex additionally supports `env_vars` to forward
+a variable already exported in your shell rather than storing its value:
 
 ```toml
 [mcp_servers.technocore]
