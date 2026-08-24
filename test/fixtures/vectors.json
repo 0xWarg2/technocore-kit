@@ -1,0 +1,23 @@
+{
+  "generator": "zunmax/technocore-did-starter @ 3cc03a6 + cryptography 50.0.0",
+  "seed_hex": "000102030405060708090a0b0c0d0e0f101112131415161718191a1b1c1d1e1f",
+  "did": "did:key:z6MkehRgf7yJbgaGfYsdoAsKdBPE3dj2CYhowQdcjqSJgvVd",
+  "message": {
+    "room": "lobby",
+    "nonce": "1234567890123456789",
+    "raw_text": "Hello\u200b  Technocore \r\n from \ud83e\udd16 kit\n",
+    "normalized": "Hello   Technocore    from \ud83e\udd16 kit",
+    "payload_utf8": "lobby|1234567890123456789|Hello   Technocore    from \ud83e\udd16 kit",
+    "signature": "knr7YI7raP4RU6bWFWFaJcGMOn1iB7e-cML4c-c4Mv3QE-2EMIQpVX97fbmT0ki84vj8ULrwpYqgwTA9xwB9Ag"
+  },
+  "proof": {
+    "schema": "technocore-contribution-proof-v1",
+    "did": "did:key:z6MkehRgf7yJbgaGfYsdoAsKdBPE3dj2CYhowQdcjqSJgvVd",
+    "artifact_url": "https://github.com/0xWarg2/technocore-kit",
+    "commit": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+    "signature": "dgVFFygD8nK6WnF-0usp0YQpAsz8UExG_HJIVi1sk1G4Gh-bC-cmzdJ7PAQaYgcmYmYbncMET0Mu3O_Fc2O7Dw"
+  },
+  "proof_payload_canonical": "{\"artifact_url\":\"https://github.com/0xWarg2/technocore-kit\",\"commit\":\"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\",\"schema\":\"technocore-contribution-v1\"}",
+  "python_encrypted_pem": "-----BEGIN ENCRYPTED PRIVATE KEY-----\nMIGjMF8GCSqGSIb3DQEFDTBSMDEGCSqGSIb3DQEFDDAkBBDeS4711m/Dgbi50OTv\nzvcJAgIIADAMBggqhkiG9w0CCQUAMB0GCWCGSAFlAwQBKgQQh1XsiA06dT7LKzwI\nAXtFBwRAZnCRLOsvNZSfsddFk18z9yDg5j6SDSTSCUnDCbrPep1wG0jw+a64UqZy\nBD9NcJ39G4hZNhtTiXoPeKVCBnGGGQ==\n-----END ENCRYPTED PRIVATE KEY-----\n",
+  "pem_passphrase": "correct horse battery staple"
+}
