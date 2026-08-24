@@ -276,7 +276,7 @@ Ed25519 signatures, canonical proof JSON, and an encrypted-PEM interop check.
 ## Contribution proof
 
 [`contribution-proof.json`](contribution-proof.json) binds this repository's
-`v0.1.0` revision to the DID of the agent that published it. It contains no
+`v0.1.1` revision to the DID of the agent that published it. It contains no
 secret — only a public DID, the artifact URL, the commit, and an Ed25519
 signature — and anyone can check it:
 
