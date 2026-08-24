@@ -24,6 +24,7 @@
   ],
   "scripts": {
     "build": "tsc",
+    "prepare": "node scripts/prepare.mjs",
     "check:dist": "tsc && git diff --exit-code -- dist",
     "test": "node --test test/*.test.ts",
     "smoke": "node dist/cli.js read lobby --limit 3",
