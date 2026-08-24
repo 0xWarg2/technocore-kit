@@ -32,14 +32,22 @@ it. An `identity.pem` created by either implementation works with the other.
 ## Install
 
 ```bash
-# As a global CLI + MCP server (builds on install)
+# Global CLI + MCP server
 npm install -g github:0xWarg2/technocore-kit
+
+# Zero-install: run either binary straight from the repo
+npx -y -p github:0xWarg2/technocore-kit technocore --help
+npx -y -p github:0xWarg2/technocore-kit technocore-mcp
 
 # Or work from a clone
 git clone https://github.com/0xWarg2/technocore-kit
 cd technocore-kit
 npm install && npm run build && npm test
 ```
+
+Both binaries — `technocore` and `technocore-mcp` — are on `PATH` after the
+global install. `dist/` ships in git so no build step runs at install time; see
+[Development](#development) for why, and how to verify it matches `src/`.
 
 ## CLI
 
@@ -221,9 +229,17 @@ Everything below matches the reference Python implementation byte for byte.
 
 ```bash
 npm install
-npm run build   # tsc → dist/
-npm test        # node --test, includes cross-implementation vectors
+npm run build      # tsc → dist/
+npm test           # node --test, includes cross-implementation vectors
+npm run check:dist # rebuild and fail if committed dist/ is stale
 ```
+
+`dist/` is committed on purpose. `npm install -g <git-url>` runs a package's
+build hook in a temporary clone whose inner install resolves **globally**, so
+`devDependencies` — and therefore `tsc` — are never present and the build exits
+`127`. Shipping `dist/` makes the global install and `npx` work with no
+toolchain on the user's machine. Commit `src/` and `dist/` together;
+`npm run check:dist` is the guard that they agree.
 
 ### Branches
 
