@@ -1,6 +1,9 @@
-# dependencies / build
+# dependencies
 node_modules/
-dist/
+
+# dist/ is intentionally committed: `npm install -g <git-url>` cannot build a
+# git dependency (its inner install resolves globally, so devDependencies —
+# and therefore tsc — are absent). `npm run check:dist` proves it matches src/.
 
 # NEVER commit identities or proofs-in-progress
 identity.pem
