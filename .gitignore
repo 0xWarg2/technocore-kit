@@ -1,0 +1,16 @@
+# dependencies / build
+node_modules/
+dist/
+
+# NEVER commit identities or proofs-in-progress
+identity.pem
+*.pem
+proof.json
+
+# local env
+.env
+.env.*
+
+# editor/os noise
+.DS_Store
+*.log

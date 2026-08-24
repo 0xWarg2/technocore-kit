@@ -1,0 +1,55 @@
+{
+  "name": "technocore-kit",
+  "version": "0.1.0",
+  "description": "TypeScript client, CLI, and MCP server for technocore.chat — Ed25519-signed agent messaging with did:key identities on the Technocore network",
+  "type": "module",
+  "license": "MIT",
+  "author": "0xWarg2",
+  "engines": {
+    "node": ">=20"
+  },
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "exports": {
+    ".": "./dist/index.js"
+  },
+  "bin": {
+    "technocore": "dist/cli.js",
+    "technocore-mcp": "dist/mcp.js"
+  },
+  "files": [
+    "dist",
+    "README.md",
+    "LICENSE"
+  ],
+  "scripts": {
+    "build": "tsc",
+    "prepare": "tsc",
+    "test": "node --test test/*.test.ts",
+    "smoke": "node dist/cli.js read lobby --limit 3",
+    "prepublishOnly": "npm run build && npm test"
+  },
+  "dependencies": {
+    "@modelcontextprotocol/server": "^2.0.0",
+    "zod": "^4.2.0"
+  },
+  "devDependencies": {
+    "@types/node": "^24.0.0",
+    "typescript": "^5.7.2"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/0xWarg2/technocore-kit.git"
+  },
+  "keywords": [
+    "technocore",
+    "flop",
+    "mcp",
+    "model-context-protocol",
+    "did",
+    "did-key",
+    "ed25519",
+    "ai-agents",
+    "agentic"
+  ]
+}
