@@ -1,6 +1,13 @@
 import assert from "node:assert/strict";
 import { generateKeyPairSync } from "node:crypto";
-import { mkdtempSync, readFileSync, statSync, writeFileSync } from "node:fs";
+import {
+  chmodSync,
+  mkdtempSync,
+  readFileSync,
+  rmSync,
+  statSync,
+  writeFileSync,
+} from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { test } from "node:test";
@@ -13,14 +20,17 @@ import {
   contributionPayload,
   createContributionProof,
   createIdentityFile,
+  defaultIdentityPath,
+  defaultPassphrasePath,
   didFromPrivateKey,
+  findPassphrase,
   loadIdentity,
   messagePayload,
   nextNonce,
   normalizeMessage,
-  passphraseFromEnv,
   privateKeyFromSeed,
   rawPublicKeyFromDid,
+  setupIdentity,
   signBytes,
   validateBaseUrl,
   validateNonce,
@@ -149,14 +159,14 @@ test("identity PEM interop: loads a key encrypted by the Python reference", () =
   assert.equal(didFromPrivateKey(loaded), vectors.did);
 });
 
-test("passphrases resolve from the env directly or from a file", () => {
+test("passphrases resolve from the env, a named file, or the identity home", () => {
   const dir = mkdtempSync(join(tmpdir(), "technocore-kit-"));
   const file = join(dir, "pass.txt");
 
   // The direct variable wins, so an inherited FILE cannot shadow it.
   writeFileSync(file, "from-the-file\n");
   assert.equal(
-    passphraseFromEnv({
+    findPassphrase({
       TECHNOCORE_PASSPHRASE: "direct",
       TECHNOCORE_PASSPHRASE_FILE: file,
     }),
@@ -164,20 +174,81 @@ test("passphrases resolve from the env directly or from a file", () => {
   );
 
   // Exactly one trailing newline is stripped; interior whitespace survives.
-  assert.equal(passphraseFromEnv({ TECHNOCORE_PASSPHRASE_FILE: file }), "from-the-file");
+  assert.equal(findPassphrase({ TECHNOCORE_PASSPHRASE_FILE: file }), "from-the-file");
   writeFileSync(file, "two words\r\n");
-  assert.equal(passphraseFromEnv({ TECHNOCORE_PASSPHRASE_FILE: file }), "two words");
+  assert.equal(findPassphrase({ TECHNOCORE_PASSPHRASE_FILE: file }), "two words");
   writeFileSync(file, "trailing-blank\n\n");
-  assert.equal(passphraseFromEnv({ TECHNOCORE_PASSPHRASE_FILE: file }), "trailing-blank\n");
+  assert.equal(findPassphrase({ TECHNOCORE_PASSPHRASE_FILE: file }), "trailing-blank\n");
 
-  assert.equal(passphraseFromEnv({}), undefined);
-  assert.equal(passphraseFromEnv({ TECHNOCORE_PASSPHRASE: "" }), undefined);
+  // An empty home yields nothing rather than reading the real ~/.technocore.
+  const home = mkdtempSync(join(tmpdir(), "technocore-home-"));
+  assert.equal(findPassphrase({ TECHNOCORE_HOME: home }), undefined);
+  assert.equal(
+    findPassphrase({ TECHNOCORE_HOME: home, TECHNOCORE_PASSPHRASE: "" }),
+    undefined,
+  );
+
+  // The home file is found without being named, but only while it stays private.
+  const homeFile = defaultPassphrasePath({ TECHNOCORE_HOME: home });
+  writeFileSync(homeFile, "implicit\n", { mode: 0o600 });
+  assert.equal(findPassphrase({ TECHNOCORE_HOME: home }), "implicit");
+  chmodSync(homeFile, 0o644);
+  assert.throws(() => findPassphrase({ TECHNOCORE_HOME: home }), IdentityError);
+  // Naming that same loose file explicitly is the operator's call, so it loads.
+  assert.equal(findPassphrase({ TECHNOCORE_PASSPHRASE_FILE: homeFile }), "implicit");
 
   writeFileSync(file, "\n");
-  assert.throws(() => passphraseFromEnv({ TECHNOCORE_PASSPHRASE_FILE: file }), IdentityError);
+  assert.throws(() => findPassphrase({ TECHNOCORE_PASSPHRASE_FILE: file }), IdentityError);
   assert.throws(
-    () => passphraseFromEnv({ TECHNOCORE_PASSPHRASE_FILE: join(dir, "absent") }),
+    () => findPassphrase({ TECHNOCORE_PASSPHRASE_FILE: join(dir, "absent") }),
     IdentityError,
+  );
+});
+
+test("setup provisions one identity and never replaces it", () => {
+  const home = join(mkdtempSync(join(tmpdir(), "technocore-kit-")), "home");
+  const env = { TECHNOCORE_HOME: home };
+
+  const first = setupIdentity(env);
+  assert.equal(first.created, true);
+  assert.match(first.did, /^did:key:z6Mk[1-9A-HJ-NP-Za-km-z]{44}$/);
+  assert.equal(first.identityPath, defaultIdentityPath(env));
+  assert.equal(statSync(home).mode & 0o777, 0o700);
+  assert.equal(statSync(first.identityPath).mode & 0o777, 0o600);
+  assert.equal(statSync(first.passphrasePath).mode & 0o777, 0o600);
+
+  // 32 random bytes as base64url, so nothing has to be typed or remembered.
+  const generated = readFileSync(first.passphrasePath, "utf-8").trimEnd();
+  assert.match(generated, /^[A-Za-z0-9_-]{43}$/);
+  assert.equal(didFromPrivateKey(loadIdentity(first.identityPath, generated)), first.did);
+
+  // Re-running reports the same DID and writes nothing.
+  const second = setupIdentity(env);
+  assert.deepEqual(second, { ...first, created: false });
+
+  // An identity whose passphrase cannot be found is an error, not a new key.
+  chmodSync(first.passphrasePath, 0o644);
+  assert.throws(() => setupIdentity(env), IdentityError);
+});
+
+test("setup adopts a passphrase file left behind without an identity", () => {
+  const home = join(mkdtempSync(join(tmpdir(), "technocore-kit-")), "home");
+  const env = { TECHNOCORE_HOME: home };
+  setupIdentity(env);
+  const passphrase = readFileSync(defaultPassphrasePath(env), "utf-8").trimEnd();
+
+  // Deleting only the key must not orphan the passphrase that still unlocks a
+  // copy of it elsewhere: the next setup reuses the secret instead of rolling it.
+  rmSync(defaultIdentityPath(env));
+  const again = setupIdentity(env);
+  assert.equal(again.created, true);
+  assert.equal(
+    readFileSync(defaultPassphrasePath(env), "utf-8").trimEnd(),
+    passphrase,
+  );
+  assert.equal(
+    didFromPrivateKey(loadIdentity(again.identityPath, passphrase)),
+    again.did,
   );
 });
 

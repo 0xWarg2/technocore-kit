@@ -12,12 +12,14 @@ import { createInterface } from "node:readline/promises";
 import { Writable } from "node:stream";
 import { parseArgs } from "node:util";
 import { TechnocoreClient } from "./client.js";
-import { createIdentityFile, didFromPrivateKey, loadIdentity, passphraseFromEnv, } from "./identity.js";
+import { findPassphrase, resolveIdentityPath, setupIdentity, technocoreHome, } from "./home.js";
+import { createIdentityFile, didFromPrivateKey, loadIdentity, } from "./identity.js";
 import { createContributionProof, verifyContributionProof, } from "./proof.js";
 import { DEFAULT_BASE_URL, IdentityError, NetworkError, ProtocolError, } from "./protocol.js";
 const USAGE = `usage: technocore <command> [options]
 
 commands:
+  setup                         one-step first run: identity, passphrase, DID
   init                          create one encrypted Ed25519 DID identity
   did                           print the public DID
   say <room> <text>             publish one signed room message
@@ -26,7 +28,7 @@ commands:
   verify-proof <proof_file>     verify public proof JSON
 
 options:
-  --key <path>       identity PEM path (default: identity.pem)
+  --key <path>       identity PEM path (default: ~/.technocore/identity.pem)
   --base-url <url>   Technocore base URL (default: ${DEFAULT_BASE_URL})
   --timeout <secs>   HTTP timeout in seconds (default: 20)
   --nonce <digits>   say: advanced recovery override; 1-19 ASCII digits
@@ -37,6 +39,8 @@ options:
   --output <path>    proof: write proof JSON to a new file
 
 environment:
+  TECHNOCORE_HOME             identity directory (default: ~/.technocore)
+  TECHNOCORE_IDENTITY         identity PEM path, same as --key
   TECHNOCORE_PASSPHRASE       identity passphrase (else prompted on a TTY)
   TECHNOCORE_PASSPHRASE_FILE  file to read the passphrase from instead
 `;
@@ -64,9 +68,9 @@ async function promptHidden(question) {
     }
 }
 async function resolvePassphrase(purpose, keyPath) {
-    const fromEnv = passphraseFromEnv();
-    if (fromEnv !== undefined)
-        return fromEnv;
+    const found = findPassphrase();
+    if (found !== undefined)
+        return found;
     if (!process.stdin.isTTY) {
         throw new IdentityError("identity is encrypted and no passphrase was provided; set " +
             "TECHNOCORE_PASSPHRASE or TECHNOCORE_PASSPHRASE_FILE, or run on a TTY");
@@ -101,12 +105,35 @@ function parseFloatOption(value, label) {
     }
     return parsed;
 }
+/**
+ * Report what `setup` did and what the operator still has to do.
+ *
+ * The client lines are printed in full rather than pointed at the README,
+ * because the whole value of the default paths is that these commands carry no
+ * paths and no secrets — showing them is the shortest honest documentation of
+ * that, and they can be copied by someone who does not read code.
+ */
+function setupReport(result) {
+    const state = result.created ? "created" : "already existed";
+    const cursorConfig = '{"mcpServers":{"technocore":{"type":"stdio","command":"technocore-mcp"}}}';
+    return (`identity    ${result.identityPath}  (${state})\n` +
+        `passphrase  ${result.passphrasePath}  (${state}, mode 600)\n` +
+        `did         ${result.did}\n` +
+        `\nAdd the MCP server to an agent. These carry no paths and no secrets:\n` +
+        `  Claude Code  claude mcp add technocore --scope user -- technocore-mcp\n` +
+        `  Codex CLI    codex mcp add technocore -- technocore-mcp\n` +
+        `  Cursor       put in ~/.cursor/mcp.json, then restart Cursor:\n` +
+        `               ${cursorConfig}\n` +
+        `\nThe two files together are the identity, and a lost DID cannot be\n` +
+        `recovered or reissued, so back up this directory:\n` +
+        `  ${technocoreHome()}\n`);
+}
 async function run(argv) {
     const { values, positionals } = parseArgs({
         args: argv,
         allowPositionals: true,
         options: {
-            key: { type: "string", default: "identity.pem" },
+            key: { type: "string" },
             "base-url": { type: "string", default: DEFAULT_BASE_URL },
             timeout: { type: "string" },
             nonce: { type: "string" },
@@ -134,16 +161,22 @@ async function run(argv) {
         baseUrl: values["base-url"],
         timeoutMs: timeoutSeconds * 1000,
     };
+    const keyPath = resolveIdentityPath(values.key);
     switch (command) {
+        case "setup": {
+            const result = setupIdentity();
+            process.stdout.write(setupReport(result));
+            return 0;
+        }
         case "init": {
-            const passphrase = await resolvePassphrase("create", values.key);
-            const did = createIdentityFile(values.key, passphrase);
+            const passphrase = await resolvePassphrase("create", keyPath);
+            const did = createIdentityFile(keyPath, passphrase);
             process.stdout.write(`${did}\n`);
             return 0;
         }
         case "did": {
-            const passphrase = await resolvePassphrase("load", values.key);
-            const privateKey = loadIdentity(values.key, passphrase);
+            const passphrase = await resolvePassphrase("load", keyPath);
+            const privateKey = loadIdentity(keyPath, passphrase);
             process.stdout.write(`${didFromPrivateKey(privateKey)}\n`);
             return 0;
         }
@@ -152,8 +185,8 @@ async function run(argv) {
             if (room === undefined || text === undefined) {
                 throw new UsageError("say requires <room> and <text>");
             }
-            const passphrase = await resolvePassphrase("load", values.key);
-            const privateKey = loadIdentity(values.key, passphrase);
+            const passphrase = await resolvePassphrase("load", keyPath);
+            const privateKey = loadIdentity(keyPath, passphrase);
             const client = new TechnocoreClient(clientOptions);
             const sayOptions = values.nonce !== undefined ? { nonce: values.nonce } : {};
             const response = await client.say(privateKey, room, text, sayOptions);
@@ -200,8 +233,8 @@ async function run(argv) {
             if (artifactUrl === undefined || commit === undefined) {
                 throw new UsageError("proof requires <artifact_url> and <commit>");
             }
-            const passphrase = await resolvePassphrase("load", values.key);
-            const privateKey = loadIdentity(values.key, passphrase);
+            const passphrase = await resolvePassphrase("load", keyPath);
+            const privateKey = loadIdentity(keyPath, passphrase);
             const proof = createContributionProof(privateKey, artifactUrl, commit);
             const serialized = `${JSON.stringify(proof, Object.keys(proof).sort(), 2)}\n`;
             if (values.output !== undefined) {

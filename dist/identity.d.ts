@@ -7,17 +7,6 @@
  * keys and passphrases never leave the local machine.
  */
 import { type KeyObject } from "node:crypto";
-/**
- * Read the identity passphrase from the environment, or return undefined.
- *
- * `TECHNOCORE_PASSPHRASE` carries the secret itself and wins when both are set.
- * `TECHNOCORE_PASSPHRASE_FILE` names a file to read it from, so an MCP client's
- * configuration can point at a `chmod 600` path instead of storing the secret
- * in a plain-text config that syncs or gets shared. One trailing newline is
- * stripped — `printf` and an editor that appends one must behave the same — but
- * nothing else is trimmed, since a passphrase may legitimately end in a space.
- */
-export declare function passphraseFromEnv(env?: Record<string, string | undefined>): string | undefined;
 /** Derive the public did:key identifier for a raw 32-byte Ed25519 public key. */
 export declare function didFromRawPublicKey(rawPublicKey: Uint8Array): string;
 /** Extract the raw 32-byte Ed25519 public key from a canonical did:key. */

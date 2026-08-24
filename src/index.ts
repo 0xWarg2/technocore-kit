@@ -23,11 +23,20 @@ export {
 } from "./protocol.ts";
 
 export {
+  defaultIdentityPath,
+  defaultPassphrasePath,
+  findPassphrase,
+  resolveIdentityPath,
+  setupIdentity,
+  technocoreHome,
+  type SetupResult,
+} from "./home.ts";
+
+export {
   createIdentityFile,
   didFromPrivateKey,
   didFromRawPublicKey,
   loadIdentity,
-  passphraseFromEnv,
   privateKeyFromSeed,
   publicKeyFromDid,
   rawPublicKey,
